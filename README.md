@@ -315,4 +315,4 @@ docker compose run --rm openclaw-cli devices approve <requestId>
 ## 👤 关于作者
 
 **湖南工商大学 机器人工程专业 大一学生** 借助 AI 大模型的力量成功完成了这次完整的部署实践。
-欢迎大家进行讨论和复现。如有问题或优化建议，欢迎提交 Issue 或 PR！
+欢迎大家进行讨论和复现。如有问题或优化建议，欢迎提交[Issue](https://github.com/sy-175/openclaw-deepseek-deploy/issues) 或 PR！
