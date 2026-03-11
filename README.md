@@ -60,7 +60,7 @@ git --version
 > **注意**：安装时建议勾选“Use WSL 2 based engine”。安装完成后，确保 Docker Desktop 处于已启动状态。
 
 ### 4. 获取 DeepSeek API Key
-前往 [https://platform.deepseek.com/api_keys](https://platform.deepseek.com/api_keys) 注册并充值（最低 10 元），创建 API Key 并保存好。
+前往 [https://platform.deepseek.com/api_keys](https://platform.deepseek.com/api_keys) 注册并充值，创建 API Key 并保存好。
 
 ---
 
