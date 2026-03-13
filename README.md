@@ -221,8 +221,7 @@ docker compose run --rm openclaw-cli devices approve <requestId>
 
 ## ❗ 常见报错与解决方法 (14 问)
 
-<details markdown="1">
-
+<details>
 <summary><b>🔥 点击展开查看全部 14 个常见报错与解决方案</b></summary>
 
 #### 1. `pull access denied for openclaw`
@@ -285,8 +284,7 @@ docker compose run --rm openclaw-cli devices approve <requestId>
   3. 执行 `docker compose down` 后重新 `docker compose up -d`。
 
 </details>
-
----
+<br>
 
 ## 🔒 安全注意事项
 
