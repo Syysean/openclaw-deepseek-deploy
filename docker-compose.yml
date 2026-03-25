@@ -1,40 +1,84 @@
 services:
   siliconflow-proxy:
-    image: node:20-alpine
+    image: node:22-alpine
     volumes:
       - ./proxy.js:/proxy.js
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
     environment:
-      SILICONFLOW_DEEPSEEK_API_KEY: ${SILICONFLOW_DEEPSEEK_API_KEY}
-      SILICONFLOW_QWEN_API_KEY: ${SILICONFLOW_QWEN_API_KEY}
-    command: [ "node", "/proxy.js" ]
+      SILICONFLOW_TEXT_API_KEY: ${SILICONFLOW_TEXT_API_KEY}
+      SILICONFLOW_TOOL_API_KEY: ${SILICONFLOW_TOOL_API_KEY}
+      SILICONFLOW_VISION_API_KEY: ${SILICONFLOW_VISION_API_KEY}
+      SILICONFLOW_REASONING_API_KEY: ${SILICONFLOW_REASONING_API_KEY}
+      SILICONFLOW_CODE_API_KEY: ${SILICONFLOW_CODE_API_KEY}
+      SILICONFLOW_EMBED_API_KEY: ${SILICONFLOW_EMBED_API_KEY}
+      # 🚀 Node.js compile cache: speeds up cold-start ~30%
+      NODE_COMPILE_CACHE: /var/tmp/node-compile-cache
+    command: ["node", "/proxy.js"]
     restart: unless-stopped
+    networks:
+      - openclaw-net
+    # 🔍 Health check so openclaw-gateway waits for proxy to be truly ready
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:13001/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   openclaw-gateway:
     image: ${OPENCLAW_IMAGE:-openclaw:local}
     depends_on:
-      - siliconflow-proxy
+      siliconflow-proxy:
+        condition: service_healthy   # wait for proxy health check to pass
     environment:
       HOME: /home/node
       TERM: xterm-256color
+      NODE_COMPILE_CACHE: /var/tmp/node-compile-cache   # 🚀 faster startup
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:-}
       OPENCLAW_ALLOW_INSECURE_PRIVATE_WS: ${OPENCLAW_ALLOW_INSECURE_PRIVATE_WS:-}
       CLAUDE_AI_SESSION_KEY: ${CLAUDE_AI_SESSION_KEY:-}
       CLAUDE_WEB_SESSION_KEY: ${CLAUDE_WEB_SESSION_KEY:-}
       CLAUDE_WEB_COOKIE: ${CLAUDE_WEB_COOKIE:-}
-      TZ: ${OPENCLAW_TZ:-UTC}
-      SILICONFLOW_API_KEY: ${SILICONFLOW_DEEPSEEK_API_KEY}
+      TZ: ${OPENCLAW_TZ:-Asia/Shanghai}   # 🌏 set to your timezone for correct log timestamps
+      SILICONFLOW_TEXT_API_KEY: ${SILICONFLOW_TEXT_API_KEY}
+      SILICONFLOW_TOOL_API_KEY: ${SILICONFLOW_TOOL_API_KEY}
+      SILICONFLOW_VISION_API_KEY: ${SILICONFLOW_VISION_API_KEY}
+      SILICONFLOW_REASONING_API_KEY: ${SILICONFLOW_REASONING_API_KEY}
+      SILICONFLOW_CODE_API_KEY: ${SILICONFLOW_CODE_API_KEY}
       SILICONFLOW_EMBED_API_KEY: ${SILICONFLOW_EMBED_API_KEY}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      # 🚀 新增：让网关能够穿透网络访问 Telegram API
+      # <- 这里换成你宿主机的代理 IP 和端口
+      ALL_PROXY: "${OPENCLAW_ALL_PROXY:-}" 
+      # 🚀 新增：防止 Docker 内部网络和本地回环被外网代理拦截
+      NO_PROXY: "siliconflow-proxy,localhost,127.0.0.1,172.16.0.0/12,10.0.0.0/8,host.docker.internal,.docker.internal" 
     volumes:
       - ${OPENCLAW_CONFIG_DIR}:/home/node/.openclaw
       - ${OPENCLAW_WORKSPACE_DIR}:/home/node/.openclaw/workspace
+      - ./skills:/app/skills
+      - /var/run/docker.sock:/var/run/docker.sock   # 🚀 新增：赋予网关派生子 Agent 容器的物理权限
     ports:
       - "${OPENCLAW_GATEWAY_PORT:-18789}:18789"
       - "${OPENCLAW_BRIDGE_PORT:-18790}:18790"
     init: true
     restart: unless-stopped
-    command: [ "node", "dist/index.js", "gateway", "--bind", "${OPENCLAW_GATEWAY_BIND:-lan}", "--port", "18789", "--allow-unconfigured" ]
+    networks:
+      - openclaw-net
+    command:
+      - "node"
+      - "dist/index.js"
+      - "gateway"
+      - "--bind"
+      - "${OPENCLAW_GATEWAY_BIND:-lan}"
+      - "--port"
+      - "18789"
+      - "--allow-unconfigured"
     healthcheck:
-      test: [ "CMD", "node", "-e", "fetch('http://127.0.0.1:18789/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" ]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:18789/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
       timeout: 5s
       retries: 5
@@ -51,19 +95,33 @@ services:
     environment:
       HOME: /home/node
       TERM: xterm-256color
+      NODE_COMPILE_CACHE: /var/tmp/node-compile-cache   # 🚀 faster startup
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:-}
       OPENCLAW_ALLOW_INSECURE_PRIVATE_WS: ${OPENCLAW_ALLOW_INSECURE_PRIVATE_WS:-}
       BROWSER: echo
       CLAUDE_AI_SESSION_KEY: ${CLAUDE_AI_SESSION_KEY:-}
       CLAUDE_WEB_SESSION_KEY: ${CLAUDE_WEB_SESSION_KEY:-}
       CLAUDE_WEB_COOKIE: ${CLAUDE_WEB_COOKIE:-}
-      TZ: ${OPENCLAW_TZ:-UTC}
+      TZ: ${OPENCLAW_TZ:-Asia/Shanghai}
+      SILICONFLOW_TEXT_API_KEY: ${SILICONFLOW_TEXT_API_KEY}
+      SILICONFLOW_TOOL_API_KEY: ${SILICONFLOW_TOOL_API_KEY}
+      SILICONFLOW_VISION_API_KEY: ${SILICONFLOW_VISION_API_KEY}
+      SILICONFLOW_REASONING_API_KEY: ${SILICONFLOW_REASONING_API_KEY}
+      SILICONFLOW_CODE_API_KEY: ${SILICONFLOW_CODE_API_KEY}
+      SILICONFLOW_EMBED_API_KEY: ${SILICONFLOW_EMBED_API_KEY}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
     volumes:
       - ${OPENCLAW_CONFIG_DIR}:/home/node/.openclaw
       - ${OPENCLAW_WORKSPACE_DIR}:/home/node/.openclaw/workspace
+      - ./skills:/app/skills
     stdin_open: true
     tty: true
     init: true
-    entrypoint: [ "node", "dist/index.js" ]
+    entrypoint: ["node", "dist/index.js"]
     depends_on:
       - openclaw-gateway
+
+# 🌐 Named bridge network: stable DNS, better isolation than default bridge
+networks:
+  openclaw-net:
+    driver: bridge
