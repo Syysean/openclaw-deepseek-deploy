@@ -26,18 +26,18 @@ graph TD
     Vector[🧠 向量检索 bge-m3]
     Payload1[📦 组装初始 Payload]
 
-    subgraph "🚦 MAS 智能路由中间件 (proxy.js :13001)"
+    subgraph MAS ["🚦 MAS 智能路由中间件 (proxy.js :13001)"]
         Router{意图与模态嗅探探针}:::proxy
         Sanitizer[🛡️ SSE 数据流清洗与截断修复]:::proxy
     end
 
-    subgraph "🧠 云端专家矩阵 (独立 API Key 隔离)"
+    subgraph Cloud ["🧠 云端专家矩阵 (独立 API Key 隔离)"]
         Brain["🧠 中央大脑<br>DeepSeek-V3.2"]:::model
         Coder["💻 代码专家<br>Qwen3-Coder"]:::model
         Vision["👁️ 视觉专家<br>Qwen3-VL"]:::model
     end
 
-    subgraph "🛠️ 本地沙盒与物理防线 (Docker 512M)"
+    subgraph Sandbox ["🛠️ 本地沙盒与物理防线 (Docker 512M)"]
         ToolFetcher[🕸️ web_fetch.cjs]:::tool
         Watchdog["✨ 30s超时 &<br> 8M显存锁"]:::tool
         Payload2[📦 组装结果 Payload v2]
@@ -170,7 +170,7 @@ cd openclaw
 
 ```powershell
 # 克隆本仓库部署模板
-git clone [https://github.com/Syysean/openclaw-deepseek-deploy](https://github.com/Syysean/openclaw-deepseek-deploy) D:\AI\openclaw-deploy
+git clone [https://github.com/Syysean/openclaw-expert-matrix](https://github.com/Syysean/openclaw-expert-matrix) D:\AI\openclaw-deploy
 
 # 覆盖核心网关、编排文件与环境变量
 Copy-Item D:\AI\openclaw-deploy\proxy.js D:\AI\openclaw\proxy.js -Force
@@ -448,4 +448,4 @@ Incoming Request -> [Payload Inspector]
 
 专注于嵌入式系统底层控制、软硬件协同架构开发以及具身智能代理模型的本地化工程部署实践。
 
-欢迎提交 [Issue](https://github.com/Syysean/openclaw-deepseek-deploy/issues) 或 PR 进行技术交流探讨。
+欢迎提交 [Issue](https://github.com/Syysean/openclaw-expert-matrix/issues) 或 PR 进行技术交流探讨。
