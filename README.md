@@ -13,7 +13,7 @@
 
 ## 示意图
 ```mermaid
-graph TD
+flowchart LR
     %% 定义样式
     classDef user fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
     classDef proxy fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,stroke-dasharray: 5 5;
@@ -449,16 +449,3 @@ Incoming Request -> [Payload Inspector]
 专注于嵌入式系统底层控制、软硬件协同架构开发以及具身智能代理模型的本地化工程部署实践。
 
 欢迎提交 [Issue](https://github.com/Syysean/openclaw-expert-matrix/issues) 或 PR 进行技术交流探讨。
-
-<script type="module">
-  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
-  mermaid.initialize({ startOnLoad: true });
-  document.addEventListener("DOMContentLoaded", () => {
-    document.querySelectorAll("pre code.language-mermaid").forEach((el) => {
-      const div = document.createElement("div");
-      div.className = "mermaid";
-      div.textContent = el.textContent;
-      el.parentElement.replaceWith(div);
-    });
-  });
-</script>
