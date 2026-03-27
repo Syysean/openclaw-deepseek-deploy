@@ -12,67 +12,8 @@
 ---
 
 ## 示意图
-```mermaid
-graph TD
-    %% 定义样式
-    classDef user fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
-    classDef proxy fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,stroke-dasharray: 5 5;
-    classDef model fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
-    classDef tool fill:#ffebee,stroke:#c62828,stroke-width:2px;
 
-    %% 节点定义
-    User((👨‍💻 开发者 WebUI)):::user
-    Gateway[🔌 OpenClaw Gateway :18789]
-    Vector[🧠 向量检索 bge-m3]
-    Payload1[📦 组装初始 Payload]
-
-    subgraph MAS ["🚦 MAS 智能路由中间件 (proxy.js :13001)"]
-        Router{意图与模态嗅探探针}:::proxy
-        Sanitizer[🛡️ SSE 数据流清洗与截断修复]:::proxy
-    end
-
-    subgraph Cloud ["🧠 云端专家矩阵 (独立 API Key 隔离)"]
-        Brain["🧠 中央大脑<br>DeepSeek-V3.2"]:::model
-        Coder["💻 代码专家<br>Qwen3-Coder"]:::model
-        Vision["👁️ 视觉专家<br>Qwen3-VL"]:::model
-    end
-
-    subgraph Sandbox ["🛠️ 本地沙盒与物理防线 (Docker 512M)"]
-        ToolFetcher[🕸️ web_fetch.cjs]:::tool
-        Watchdog["✨ 30s超时 &<br> 8M显存锁"]:::tool
-        Payload2[📦 组装结果 Payload v2]
-    end
-
-    %% 阶段 1：指令接入
-    User -->|1. 下发需求| Gateway
-    Gateway -->|2. 检索记忆| Vector
-    Vector -->|3. 封装| Payload1
-    
-    %% 阶段 2：初次路由
-    Payload1 -->|4. 拦截转发| Router
-    Router -->|发现工具调用意图| Brain
-    Router -->|包含图片| Vision
-
-    %% 阶段 3：工具调度与防线
-    Brain -->|5. 下发 Tool Call| ToolFetcher
-    ToolFetcher --> Watchdog
-    Watchdog -->|触发 OOM/超时| Error[返回熔断报错]
-    Watchdog -->|安全执行| Success[获取网页/环境数据]
-    Error --> Payload2
-    Success --> Payload2
-
-    %% 阶段 4：二次路由分发
-    Payload2 -->|6. 携带数据重新请求| Router
-    Router -->|明确纯写代码任务| Coder
-
-    %% 阶段 5：清洗与输出
-    Coder -->|7. 流式生成 C++| Sanitizer
-    Brain -->|流式文本| Sanitizer
-    Vision -->|流式文本| Sanitizer
-    
-    Sanitizer -->|8. 零缓冲纯净透传| Gateway
-    Gateway -->|渲染显示| User
-```
+![🦞 OpenClaw × SiliconFlow Experts Matrix Architecture](images/expert-matrix.svg)
 
 ## 📑 目录
 
