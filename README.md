@@ -13,7 +13,7 @@
 
 ## 示意图
 
-![🦞 OpenClaw × SiliconFlow Experts Matrix Architecture](images/expert-matrix.svg)
+![🦞 OpenClaw × openclaw-soft-engine](images/openclaw-soft-engine.svg)
 
 ## 📑 目录
 
@@ -107,21 +107,19 @@ git clone --depth 1 https://github.com/openclaw/openclaw
 cd openclaw
 ```
 
-### 第三步：将本仓库文件覆盖到 openclaw 目录
+### 第三步：将本仓库文件同步到 openclaw 目录
 
-```powershell
 # 克隆本仓库部署模板
-git clone https://github.com/Syysean/openclaw-expert-matrix D:\AI\openclaw-deploy
+git clone https://github.com/Syysean/openclaw-soft-engine D:\AI\openclaw-deploy
 
 # 覆盖核心网关、编排文件与环境变量模板
 Copy-Item D:\AI\openclaw-deploy\proxy.js D:\AI\openclaw\proxy.js -Force
 Copy-Item D:\AI\openclaw-deploy\docker-compose.yml D:\AI\openclaw\docker-compose.yml -Force
 Copy-Item D:\AI\openclaw-deploy\.env.example D:\AI\openclaw\.env.example -Force
 
-# 部署软执行引擎核心协议与加固版工具链 (v2.0 路径)
+# 部署沙盒安全配置与软执行引擎核心协议（含 v2.0 加固版工具库）
+Copy-Item D:\AI\openclaw-deploy\config\openclaw.example.json D:\AI\openclaw\config\ -Force
 Copy-Item D:\AI\openclaw-deploy\workspace\* D:\AI\openclaw\workspace\ -Recurse -Force
-mkdir -p D:\AI\openclaw\workspace\tools
-Copy-Item D:\AI\openclaw-deploy\custom_tools\* D:\AI\openclaw\workspace\tools\ -Recurse -Force
 ```
 
 ### 第四步：配置环境变量
@@ -384,4 +382,4 @@ docker compose logs -f siliconflow-proxy
 
 **湖南工商大学 机器人工程专业 本科在读**
 
-欢迎提交 [Issue](https://github.com/Syysean/openclaw-expert-matrix/issues) 或 PR 进行技术交流探讨。
+欢迎提交 [Issue](https://github.com/Syysean/openclaw-soft-engine/issues) 或 PR 进行技术交流探讨。
