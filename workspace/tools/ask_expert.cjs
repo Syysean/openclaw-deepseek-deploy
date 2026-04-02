@@ -11,9 +11,13 @@ if (!mode || !prompt) {
   process.exit(1);
 }
 
+// ── 代理与模型环境变量解耦 ──────────────────────────────────────────────
+const proxyHost = process.env.PROXY_HOST || 'siliconflow-proxy';
+const proxyPort = parseInt(process.env.PROXY_PORT || '13001', 10);
+
 const MODEL_MAP = {
-  reason: 'Pro/deepseek-ai/DeepSeek-R1',
-  code:   'Qwen/Qwen3-Coder-30B-A3B-Instruct'
+  reason: process.env.MATRIX_REASONING_MODEL || 'Pro/deepseek-ai/DeepSeek-R1',
+  code:   process.env.MATRIX_CODE_MODEL || 'Qwen/Qwen3-Coder-30B-A3B-Instruct'
 };
 
 const model = MODEL_MAP[mode];
@@ -26,8 +30,8 @@ const body = JSON.stringify({
 });
 
 const req = http.request({
-  hostname: 'siliconflow-proxy',
-  port: 13001,
+  hostname: proxyHost,
+  port: proxyPort,
   path: '/v1/chat/completions',
   method: 'POST',
   headers: {
@@ -67,7 +71,6 @@ const req = http.request({
 req.setTimeout(600_000, () => {
   req.destroy(new Error('上游节点运算超时 (已超过 10 分钟)'));
 });
-
 req.on('error', err => { 
   console.error(`[专家系统异常] 网络或通信错误: ${err.message}`); 
   process.exit(1); 

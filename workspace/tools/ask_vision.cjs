@@ -6,9 +6,26 @@ const path = require('path');
 const imagePath = process.argv[2];
 const question  = process.argv.slice(3).join(' ') || '请描述这张图片的内容';
 
-if (!imagePath) { console.error('Usage: node ask_vision.cjs <path> <question>'); process.exit(1); }
+if (!imagePath) { console.error('Usage: node ask_vision.cjs <path|media://inbound/<id>> <question>'); process.exit(1); }
 
-const abs = path.resolve(imagePath);
+// ── 代理与模型环境变量解耦 ──────────────────────────────────────────────
+const proxyHost = process.env.PROXY_HOST || 'siliconflow-proxy';
+const proxyPort = parseInt(process.env.PROXY_PORT || '13001', 10);
+const visionModel = process.env.MATRIX_VISION_MODEL || 'Qwen/Qwen3-VL-32B-Instruct';
+
+// ── media://inbound/<id> URI 解析 (PR #55513 Claim Check 契约) ──────────────
+// 网关对 2–5MB 图片不再内联 base64，而是存盘后传递 media://inbound/<id> URI。
+// 此处将 URI 解析为实际文件路径，其余流程保持不变。
+let abs;
+if (imagePath.startsWith('media://inbound/')) {
+  const mediaId = imagePath.slice('media://inbound/'.length);
+  const mediaBase = process.env.OPENCLAW_MEDIA_INBOUND_DIR ||
+    path.join(process.env.HOME || '/home/node', '.openclaw', 'media', 'inbound');
+  abs = path.resolve(mediaBase, mediaId);
+} else {
+  abs = path.resolve(imagePath);
+}
+
 if (!fs.existsSync(abs)) { console.error('File not found:', abs); process.exit(1); }
 
 // 🚀 修复：物理级防线，拦截大于 8MB 的图片，防止 Base64 转换时撑爆内存 (OOM)
@@ -25,7 +42,7 @@ const mediaType = MIME[ext] || 'image/jpeg';
 const base64 = fs.readFileSync(abs).toString('base64');
 
 const body = JSON.stringify({
-  model: 'Qwen/Qwen3-VL-32B-Instruct',
+  model: visionModel,
   max_tokens: 2048,
   messages: [
     {
@@ -43,8 +60,8 @@ const body = JSON.stringify({
 });
 
 const req = http.request({
-  hostname: 'siliconflow-proxy',
-  port: 13001,
+  hostname: proxyHost,
+  port: proxyPort,
   path: '/v1/chat/completions',
   method: 'POST',
   headers: {
@@ -84,7 +101,6 @@ const req = http.request({
 req.setTimeout(600_000, () => {
   req.destroy(new Error('上游节点运算超时 (已超过 10 分钟)'));
 });
-
 req.on('error', err => { 
   console.error(`[专家系统异常] 网络或通信错误: ${err.message}`); 
   process.exit(1); 

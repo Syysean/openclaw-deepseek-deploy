@@ -137,3 +137,6 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# OpenClaw Override Config (Contains local host paths)
+docker-compose.override.yml

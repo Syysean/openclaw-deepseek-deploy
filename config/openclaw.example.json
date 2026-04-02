@@ -1,97 +1,7 @@
 {
   "meta": {
-    "lastTouchedVersion": "2026.3.14",
-    "lastTouchedAt": "2026-03-22T02:13:35.154Z"
-  },
-  "wizard": {
-    "lastRunAt": "2026-03-20T00:00:00.000Z",
-    "lastRunVersion": "2026.3.14",
-    "lastRunCommand": "configure",
-    "lastRunMode": "local"
-  },
-  "auth": {
-    "profiles": {
-      "openai:default": {
-        "provider": "openai",
-        "mode": "api_key"
-      }
-    }
-  },
-  "models": {
-    "mode": "merge",
-    "providers": {
-      "siliconflow": {
-        "baseUrl": "http://siliconflow-proxy:13001/v1",
-        "apiKey": "${SILICONFLOW_TEXT_API_KEY}",
-        "api": "openai-completions",
-        "models": [
-          {
-            "id": "router",
-            "name": "智能路由中枢（proxy)",
-            "api": "openai-completions",
-            "reasoning": true,
-            "input": ["text"],
-            "contextWindow": 128000,
-            "maxTokens": 8192
-          }
-        ]
-      }
-    }
-  },
-  "agents": {
-    "defaults": {
-      "model": {
-        "primary": "siliconflow/router",
-        "fallbacks": []
-      },
-      "models": {
-        "siliconflow/router": { "alias": "router" }
-      },
-      "workspace": "/home/node/.openclaw/workspace",
-      "memorySearch": {
-        "provider": "openai",
-        "remote": {
-          "baseUrl": "http://siliconflow-proxy:13001/v1",
-          "apiKey": "${SILICONFLOW_EMBED_API_KEY}"
-        },
-        "model": "BAAI/bge-m3"
-      },
-      "maxConcurrent": 4,
-      "subagents": {
-        "maxConcurrent": 8
-      },
-      "sandbox": {
-        "mode": "non-main"
-      }
-    },
-    "list": [
-      {
-        "id": "main",
-        "name": "main",
-        "workspace": "/home/node/.openclaw/workspace",
-        "agentDir": "/home/node/.openclaw/agents/main/agent",
-        "model": "siliconflow/router"
-      }
-    ]
-  },
-  "tools": {},
-  "messages": {
-    "ackReactionScope": "group-mentions"
-  },
-  "commands": {
-    "native": "auto",
-    "nativeSkills": "auto",
-    "restart": true,
-    "ownerDisplay": "raw"
-  },
-  "channels": {
-    "telegram": {
-      "enabled": true,
-      "dmPolicy": "pairing",
-      "botToken": "${TELEGRAM_BOT_TOKEN}",
-      "groupPolicy": "disabled",
-      "streaming": "partial"
-    }
+    "lastTouchedVersion": "latest",
+    "lastTouchedAt": "2026-01-01T00:00:00.000Z"
   },
   "gateway": {
     "port": 18789,
@@ -118,14 +28,84 @@
       "resetOnExit": false
     }
   },
-  "plugins": {
-    "entries": {
-      "telegram": {
-        "enabled": true
-      },
-      "acpx": {
-        "enabled": true
+  "auth": {
+    "profiles": {
+      "openai:default": {
+        "provider": "openai",
+        "mode": "api_key"
       }
+    }
+  },
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "siliconflow": {
+        "baseUrl": "http://siliconflow-proxy:13001/v1",
+        "apiKey": "${SILICONFLOW_TEXT_API_KEY}",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "router",
+            "name": "智能路由中枢（proxy)",
+            "api": "openai-completions",
+            "reasoning": true,
+            "input": [
+              "text",
+              "image"
+            ],
+            "contextWindow": 128000,
+            "maxTokens": 8192
+          }
+        ]
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "siliconflow/router",
+        "fallbacks": []
+      },
+      "models": {
+        "siliconflow/router": {
+          "alias": "router"
+        }
+      },
+      "workspace": "/home/node/.openclaw/workspace",
+      "memorySearch": {
+        "provider": "openai",
+        "remote": {
+          "baseUrl": "http://siliconflow-proxy:13001/v1",
+          "apiKey": "${SILICONFLOW_EMBED_API_KEY}"
+        },
+        "model": "${MATRIX_EMBED_MODEL:-BAAI/bge-m3}"
+      },
+      "maxConcurrent": 4,
+      "subagents": {
+        "maxConcurrent": 8
+      },
+      "sandbox": {
+        "mode": "off"
+      },
+      "timeoutSeconds": 600
+    },
+    "list": [
+      {
+        "id": "main",
+        "name": "main",
+        "workspace": "/home/node/.openclaw/workspace",
+        "agentDir": "/home/node/.openclaw/agents/main/agent",
+        "model": "siliconflow/router"
+      }
+    ]
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "dmPolicy": "pairing",
+      "botToken": "${TELEGRAM_BOT_TOKEN}",
+      "groupPolicy": "disabled",
+      "streaming": "partial"
     }
   }
 }

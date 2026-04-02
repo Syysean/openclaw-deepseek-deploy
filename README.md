@@ -1,13 +1,13 @@
-# 🦞 OpenClaw × SiliconFlow 六模型专家矩阵部署方案
+# 🦞 OpenClaw Soft Engine (Expert Matrix v2.0)
 
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue?logo=docker&logoColor=white)](https://www.docker.com)
 [![Windows 11](https://img.shields.io/badge/OS-Windows_11-0078D4?logo=windows&logoColor=white)](https://www.microsoft.com/windows/windows-11)
-[![SiliconFlow](https://img.shields.io/badge/API-SiliconFlow-black)](https://siliconflow.cn)
+[![Protocol](https://img.shields.io/badge/Protocol-DAG_Scheduling-orange)](workspace/AGENTS.md)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-本项目提供一套完整的实战部署方案，在 Windows 11 + Docker 环境下运行 OpenClaw，通过自建 **智能路由代理（proxy.js）** 对接 SiliconFlow 平台，实现多模态专家模型（DeepSeek 与 Qwen 系列）的动态分发，并包含严密的物理资源隔离与安全加固措施。
+本项目不仅仅是 OpenClaw 的配置模板，而是一套完整的 **Agent 软执行引擎 (Soft Execution Engine)** 实战方案。它通过强约束的 **DAG (有向无环图) 任务协议** 和 **多专家模型路由**，将 OpenClaw 从一个简单的聊天机器人，进化为具备物理隔离、并发调度和自我纠错能力的工业级 AI 助手。
 
-> 本教程记录了真实部署过程中的所有步骤与系统架构调优经验，适合国内开发者参考。
+> 本教程记录了从 v1.0 “六模型矩阵” 进化至 v2.0 “软执行引擎” 的全过程，适合追求工程化落地的开发者参考。
 
 ---
 
@@ -33,14 +33,14 @@
 
 ## ✨ 方案特性
 
-相比直接对接单一模型 API，本方案通过底层重构具备以下工程优势：
+相比 v1.0 版本，本方案通过架构重构具备以下工程优势：
 
 | 特性 | 说明 |
 | --- | --- |
 | **多路智能路由** | 根据 Payload 动态分发：常规对话/工具调度 → DeepSeek-V3.2，深度推理 → R1，视觉解析/代码生成 → Qwen 系列专家。 |
 | **API 密钥池化隔离** | Text / Tool / Vision / Reason / Code 使用独立 Key 进行计费与限流隔离，彻底解决高并发下的 429 报错瓶颈。 |
 | **跨模态数据清洗** | 底层拦截机制：自动剥离进入纯文本模型（如 R1）的图像载荷，防止上下文解析引发的 400 崩溃。 |
-| **系统级资源熔断** | 代理容器硬性锁死 512MB 内存防 OOM；外围抓取工具（web_fetch）加入 30 秒 AbortController 超时防挂起策略。 |
+| **系统级资源熔断** | 代理容器硬性锁死 512MB 内存防 OOM；外围抓取工具（web_fetch）加入 45 秒 AbortController 超时防挂起策略。 |
 | **全环境变量化** | 零硬编码，所有密钥通过 `.env` 安全注入。 |
 
 ---
@@ -113,13 +113,13 @@ cd openclaw
 # 克隆本仓库部署模板
 git clone https://github.com/Syysean/openclaw-expert-matrix D:\AI\openclaw-deploy
 
-# 覆盖核心网关、编排文件与环境变量
+# 覆盖核心网关、编排文件与环境变量模板
 Copy-Item D:\AI\openclaw-deploy\proxy.js D:\AI\openclaw\proxy.js -Force
 Copy-Item D:\AI\openclaw-deploy\docker-compose.yml D:\AI\openclaw\docker-compose.yml -Force
 Copy-Item D:\AI\openclaw-deploy\.env.example D:\AI\openclaw\.env.example -Force
 
-# 部署沙盒安全配置与加固版工具库
-Copy-Item D:\AI\openclaw-deploy\config D:\AI\openclaw\ -Recurse -Force
+# 部署软执行引擎核心协议与加固版工具链 (v2.0 路径)
+Copy-Item D:\AI\openclaw-deploy\workspace\* D:\AI\openclaw\workspace\ -Recurse -Force
 mkdir -p D:\AI\openclaw\workspace\tools
 Copy-Item D:\AI\openclaw-deploy\custom_tools\* D:\AI\openclaw\workspace\tools\ -Recurse -Force
 ```
@@ -129,7 +129,11 @@ Copy-Item D:\AI\openclaw-deploy\custom_tools\* D:\AI\openclaw\workspace\tools\ -
 复制模板并填写真实值：
 
 ```powershell
+# 复制环境变量与网关配置模板
 Copy-Item .env.example .env
+Copy-Item config\openclaw.example.json config\openclaw.json
+
+# 填写真实值
 notepad .env
 ```
 
@@ -330,7 +334,7 @@ docker compose logs -f siliconflow-proxy
 
 **14. 僵尸工具进程永久挂起**
 - **现象**：调用 `web_fetch` 等外部工具时系统卡死。
-- **排障**：检查是否未覆盖使用 `custom_tools/` 目录下的安全脚本。加固版脚本已内置 30 秒强制超时熔断锁。
+- **排障**：检查是否未覆盖使用 `workspace/tools/` 目录下的安全脚本。加固版脚本已内置 45 秒强制超时熔断锁。
 
 </details>
 <br>
@@ -349,27 +353,20 @@ docker compose logs -f siliconflow-proxy
 ## 📂 仓库文件说明
 
 ```text
-├── proxy.js              # 核心路由引擎：实现多模态模型分发、SSE流截断修复与跨模态数据清洗
-├── docker-compose.yml    # 容器编排：定义环境变量映射与 OOM 资源硬限制
-├── .env.example          # 环境变量模板（六路密钥隔离池配置）
+├── proxy.js                   # 核心路由引擎：实现多模态分发、流截断修复与跨模态数据清洗
+├── docker-compose.yml         # 编排文件：定义网络、健康检查与容器资源硬限制
+├── docker-compose.override.example.yml # 配置模板：用于挂载本地物理项目路径
+├── .env.example               # 环境变量模板：六路密钥隔离池配置
 ├── config/
-│   └── openclaw.json     # 全局安全配置策略（定义沙盒运行级别）
-├── custom_tools/
-│   ├── web_fetch.cjs     # 防挂起模块：封装 30s AbortController 超时熔断
-│   └── ask_vision.cjs    # 显存保护模块：封装 8MB Payload 拦截锁
-└── images/               # 文档静态资源
-```
-
-### proxy.js 路由漏斗流转逻辑
-
-```text
-Incoming Request -> [Payload Inspector]
-    │
-    ├─ 匹配专家标识 (reason/code/vision) ──→ 专家模型直连通道 (专属 API Key)
-    │
-    ├─ 检测到工具调度 (tools 数组存在) ───→ DeepSeek-V3.2 (TOOL_KEY 独立计费池)
-    │
-    └─ 常规纯文本请求 (Default) ─────────→ DeepSeek-V3.2 (TEXT_KEY 通用池)
+│   └── openclaw.example.json  # 全局安全策略：预设沙盒等级与鉴权模式
+└── workspace/                 # 软执行引擎核心工作区
+    ├── AGENTS.md              # 核心协议：DAG 任务调度、任务依赖与反虚构准则
+    ├── TOOLS.md               # 基础设施：定义物理边界、模型路由表与目录结构
+    └── tools/                 # 加固版工具链
+        ├── ask_expert.cjs     # 专家调度：支持推理/代码模式切换与 10min 超时保护
+        ├── ask_vision.cjs     # 视觉保护：支持 media:// 契约与 8MB OOM 拦截
+        ├── web_fetch.cjs      # 智能爬虫：Jina/Firecrawl 双引擎自动切换与 45s 熔断
+        └── deep_search.cjs    # 深度搜索：带权重的本地知识库检索算法
 ```
 
 ---

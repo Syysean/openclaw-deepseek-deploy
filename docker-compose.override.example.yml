@@ -1,0 +1,108 @@
+services:
+  siliconflow-proxy:
+    image: node:22-alpine
+    volumes:
+      - ./proxy.js:/proxy.js
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    environment:
+      MATRIX_TEXT_API_KEY: ${MATRIX_TEXT_API_KEY}
+      MATRIX_TOOL_API_KEY: ${MATRIX_TOOL_API_KEY}
+      MATRIX_VISION_API_KEY: ${MATRIX_VISION_API_KEY}
+      MATRIX_REASONING_API_KEY: ${MATRIX_REASONING_API_KEY}
+      MATRIX_CODE_API_KEY: ${MATRIX_CODE_API_KEY}
+      MATRIX_EMBED_API_KEY: ${MATRIX_EMBED_API_KEY}
+      NODE_COMPILE_CACHE: /var/tmp/node-compile-cache
+      OPENAI_COMPATIBLE_HOST: ${OPENAI_COMPATIBLE_HOST:-api.siliconflow.cn}
+      MATRIX_TEXT_MODEL: ${MATRIX_TEXT_MODEL:-}
+      MATRIX_VISION_MODEL: ${MATRIX_VISION_MODEL:-}
+      MATRIX_REASONING_MODEL: ${MATRIX_REASONING_MODEL:-}
+      MATRIX_CODE_MODEL: ${MATRIX_CODE_MODEL:-}
+      MATRIX_EMBED_MODEL: ${MATRIX_EMBED_MODEL:-}
+      MATRIX_RERANK_MODEL: ${MATRIX_RERANK_MODEL:-}
+    command: [ "node", "/proxy.js" ]
+    restart: unless-stopped
+    networks:
+      - openclaw-net
+    healthcheck:
+      test: [ "CMD", "node", "-e", "fetch('http://127.0.0.1:13001/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" ]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  openclaw-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: openclaw:local
+    depends_on:
+      siliconflow-proxy:
+        condition: service_healthy
+    networks:
+      - openclaw-net
+    command:
+      - "node"
+      - "dist/index.js"
+      - "gateway"
+      - "--bind"
+      - "${OPENCLAW_GATEWAY_BIND:-lan}"
+      - "--port"
+      - "18789"
+      - "--allow-unconfigured"
+    environment:
+      SILICONFLOW_TEXT_API_KEY: ${MATRIX_TEXT_API_KEY}
+      SILICONFLOW_TOOL_API_KEY: ${MATRIX_TOOL_API_KEY}
+      SILICONFLOW_VISION_API_KEY: ${MATRIX_VISION_API_KEY}
+      SILICONFLOW_REASONING_API_KEY: ${MATRIX_REASONING_API_KEY}
+      SILICONFLOW_CODE_API_KEY: ${MATRIX_CODE_API_KEY}
+      SILICONFLOW_EMBED_API_KEY: ${MATRIX_EMBED_API_KEY}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      MATRIX_EMBED_MODEL: ${MATRIX_EMBED_MODEL}
+      MATRIX_TEXT_MODEL: ${MATRIX_TEXT_MODEL}
+      MATRIX_REASONING_MODEL: ${MATRIX_REASONING_MODEL}
+      MATRIX_CODE_MODEL: ${MATRIX_CODE_MODEL}
+      MATRIX_VISION_MODEL: ${MATRIX_VISION_MODEL}
+      HTTP_PROXY: ${OPENCLAW_ALL_PROXY:-}
+      HTTPS_PROXY: ${OPENCLAW_ALL_PROXY:-}
+      JINA_API_KEY: ${JINA_API_KEY}
+      FIRECRAWL_API_KEY: ${FIRECRAWL_API_KEY:-}
+      NO_PROXY: "siliconflow-proxy,localhost,127.0.0.1,172.16.0.0/12,10.0.0.0/8,host.docker.internal,.docker.internal,api.siliconflow.cn"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # [User Config] Map your local host project directory to the container here
+      # - /path/to/your/host/project:/home/node/projects/my-project
+  openclaw-cli:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: openclaw:local
+    environment:
+      SILICONFLOW_TEXT_API_KEY: ${MATRIX_TEXT_API_KEY}
+      SILICONFLOW_TOOL_API_KEY: ${MATRIX_TOOL_API_KEY}
+      SILICONFLOW_VISION_API_KEY: ${MATRIX_VISION_API_KEY}
+      SILICONFLOW_REASONING_API_KEY: ${MATRIX_REASONING_API_KEY}
+      SILICONFLOW_CODE_API_KEY: ${MATRIX_CODE_API_KEY}
+      SILICONFLOW_EMBED_API_KEY: ${MATRIX_EMBED_API_KEY}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      MATRIX_EMBED_MODEL: ${MATRIX_EMBED_MODEL}
+      MATRIX_TEXT_MODEL: ${MATRIX_TEXT_MODEL}
+      MATRIX_REASONING_MODEL: ${MATRIX_REASONING_MODEL}
+      MATRIX_CODE_MODEL: ${MATRIX_CODE_MODEL}
+      MATRIX_VISION_MODEL: ${MATRIX_VISION_MODEL}
+      HTTP_PROXY: ${OPENCLAW_ALL_PROXY:-}
+      HTTPS_PROXY: ${OPENCLAW_ALL_PROXY:-}
+      JINA_API_KEY: ${JINA_API_KEY}
+      FIRECRAWL_API_KEY: ${FIRECRAWL_API_KEY:-}
+      NO_PROXY: "siliconflow-proxy,localhost,127.0.0.1,172.16.0.0/12,10.0.0.0/8,host.docker.internal,.docker.internal,api.siliconflow.cn"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # [User Config] Map your local host project directory to the container here
+      # - /path/to/your/host/project:/home/node/projects/my-project
+
+networks:
+  openclaw-net:
+    driver: bridge
