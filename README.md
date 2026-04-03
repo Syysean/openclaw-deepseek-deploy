@@ -282,7 +282,7 @@ docker compose logs -f matrix-proxy
 
 ## Troubleshooting Guide
 
-<details>
+<details markdown="1">
 <summary><b>Click to expand the full troubleshooting reference</b></summary>
 
 ### Container and Image Issues
