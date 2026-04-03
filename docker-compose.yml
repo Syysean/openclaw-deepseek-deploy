@@ -1,4 +1,20 @@
 services:
+  matrix-proxy:
+    image: node:20-alpine
+    networks:
+      - openclaw-net
+    ports:
+      - "13001:13001"
+    volumes:
+      - ./proxy.js:/app/proxy.js
+      # 必须挂载媒体目录，否则视觉模块无法读取图片进行 base64 转换
+      - ${OPENCLAW_CONFIG_DIR:-./config}/media/inbound:/home/node/.openclaw/media/inbound
+    working_dir: /app
+    env_file:
+      - .env
+    command: node proxy.js
+    restart: unless-stopped
+
   openclaw-gateway:
     image: ${OPENCLAW_IMAGE:-openclaw:local}
     # 加入自定义网络，确保能与专家代理 (Proxy) 通信
@@ -16,7 +32,7 @@ services:
     volumes:
       - ${OPENCLAW_CONFIG_DIR}:/home/node/.openclaw
       - ${OPENCLAW_WORKSPACE_DIR}:/home/node/.openclaw/workspace
-      # 💡解除注释，配合 AGENTS.md 的 sandbox 协议实现容器化执行能力
+      # 解除注释，配合 AGENTS.md 的 sandbox 协议实现容器化执行能力
       - /var/run/docker.sock:/var/run/docker.sock
     # group_add:
     #   - "${DOCKER_GID:-999}"
@@ -50,7 +66,7 @@ services:
 
   openclaw-cli:
     image: ${OPENCLAW_IMAGE:-openclaw:local}
-    # 💡 CLI 共享网关的内部网络空间，自动获得与 Proxy 的通信能力
+    # CLI 共享网关的内部网络空间，自动获得与 Proxy 的通信能力
     network_mode: "service:openclaw-gateway"
     cap_drop:
       - NET_RAW

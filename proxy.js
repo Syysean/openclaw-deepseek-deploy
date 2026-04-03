@@ -60,7 +60,9 @@ const MEDIA_URI_RE = /media:\/\/inbound\/([^\s\]"'<>]+)/g;
 function resolveMediaUriToDataUrl(mediaId) {
   const fs   = require("fs");
   const pa   = require("path");
-  const filePath = pa.resolve(MEDIA_INBOUND_DIR, mediaId);
+  const safeMediaId = pa.basename(mediaId); 
+  const filePath = pa.resolve(MEDIA_INBOUND_DIR, safeMediaId);
+  
   if (!fs.existsSync(filePath)) return null;
   const ext  = pa.extname(filePath).toLowerCase();
   const MIME = { ".jpg": "image/jpeg", ".jpeg": "image/jpeg",

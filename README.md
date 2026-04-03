@@ -76,9 +76,11 @@ wsl --install
 - Git：[git-scm.com](https://git-scm.com)
 - Docker Desktop：[docker.com](https://www.docker.com)，安装时勾选 "Use WSL 2 based engine"
 
-### 3. 获取 SiliconFlow API Key
+### 3. 获取大模型 API Key
 
-前往 [SiliconFlow 控制台](https://cloud.siliconflow.cn/account/ak) 注册并创建 API Key。
+前往任何兼容 OpenAI 规范的模型平台 (如 SiliconFlow, DeepSeek 官方等) 获取 API Key。
+
+*(注：本教程以 [SiliconFlow 控制台](https://cloud.siliconflow.cn/account/ak) 为例)*
 
 为了实现多路并发隔离，建议创建 **多个独立的 Key**，分别配置于 `.env` 中：
 - 通用文本与工具调度 (Text & Tool)
@@ -143,13 +145,13 @@ notepad .env
 # openssl rand -hex 24
 OPENCLAW_GATEWAY_TOKEN=你生成的随机token
 
-# SiliconFlow 多路独立鉴权 Key
-SILICONFLOW_TEXT_API_KEY=sk-...
-SILICONFLOW_TOOL_API_KEY=sk-...
-SILICONFLOW_VISION_API_KEY=sk-...
-SILICONFLOW_REASONING_API_KEY=sk-...
-SILICONFLOW_CODE_API_KEY=sk-...
-SILICONFLOW_EMBED_API_KEY=sk-...
+# MATRIX 多路独立鉴权 Key
+MATRIX_TEXT_API_KEY=sk-...
+MATRIX_TOOL_API_KEY=sk-...
+MATRIX_VISION_API_KEY=sk-...
+MATRIX_REASONING_API_KEY=sk-...
+MATRIX_CODE_API_KEY=sk-...
+MATRIX_EMBED_API_KEY=sk-...
 
 # 网页抓取工具可选配置
 JINA_API_KEY=jina_...
@@ -177,7 +179,7 @@ docker compose ps
 验证 proxy 智能路由是否正常挂载：
 
 ```powershell
-docker compose logs siliconflow-proxy
+docker compose logs -f matrix-proxy
 ```
 
 应看到类似如下系统初始化日志：
@@ -263,7 +265,7 @@ docker compose down
 docker compose logs -f
 
 # 只看 proxy 路由日志
-docker compose logs -f siliconflow-proxy
+docker compose logs -f matrix-proxy
 ```
 
 ---
@@ -291,20 +293,20 @@ docker compose logs -f siliconflow-proxy
 
 **4. `LLM request timed out`**
 - **现象**：代理网关上游响应超时。
-- **排障**：通过 `docker compose logs siliconflow-proxy` 查看路由网关日志。通常是上游 SiliconFlow 服务器拥堵，或本地网关容器未正常启动。
+- **排障**：通过 `docker compose logs -f matrix-proxy` 查看路由网关日志。通常是上游大模型服务器拥堵，或本地网关容器未正常启动。
 
 **5. `ERR_EMPTY_RESPONSE` / `non-loopback Control UI requires...`**
 - **现象**：UI 面板拒绝跨域或网关回源失败。
 - **排障**：网关绑定为局域网 (LAN) 时，必须在 `openclaw.json` 中配置 `dangerouslyAllowHostHeaderOriginFallback: true` 以允许跨域源站校验。
 
 #### [认证与权限异常]
-**6. `SILICONFLOW_DEEPSEEK_API_KEY is not set` / 启动报错**
+**6. `MATRIX_TEXT_API_KEY is not set` / 启动报错**
 - **现象**：系统检测到认证凭据未注入。
-- **排障**：检查 `.env` 文件。确保多个 `SILICONFLOW_*` 变量名拼写正确，且**等号前后绝对不能有空格**（这会导致环境变量解析异常）。
+- **排障**：检查 `.env` 文件。确保多个 `MATRIX_*` 变量名拼写正确，且**等号前后绝对不能有空格**（这会导致环境变量解析异常）。
 
 **7. `Verification failed: status 402`**
 - **现象**：上游模型路由寻址成功，但拒绝服务。
-- **排障**：上游云服务商 (SiliconFlow) 配额耗尽，请前往控制台补充算力余额。
+- **排障**：上游云服务商配额耗尽，请前往控制台补充算力余额。
 
 **8. `gateway token mismatch` / `unauthorized: gateway token missing`**
 - **现象**：鉴权握手失败。
@@ -325,9 +327,9 @@ docker compose logs -f siliconflow-proxy
 
 **12. `404 status code (no body)`**
 - **现象**：Agent 路由寻址失败。
-- **排障**：确认 `openclaw.json` 中的 `model` 字段值指向了正确的供应商接口（应为 `siliconflow/deepseek`）。
+- **排障**：确认 `openclaw.json` 中的 `model` 字段值指向了正确的供应商接口(确保模型名与你填写的供应商对应)。
 
-**13. `SILICONFLOW_API_KEY is not set` (单 Key 报错)**
+**13. `MATRIX_TEXT_API_KEY is not set` (单 Key 报错)**
 - **现象**：路由网关版本陈旧。
 - **排障**：你仍在运行旧版的“单 Key 路由”脚本。请用本仓库最新的 `proxy.js`（多路独立路由版）覆盖，并重启 proxy 容器。
 
@@ -373,6 +375,7 @@ docker compose logs -f siliconflow-proxy
 ## 📚 参考资料
 
 - [OpenClaw 官方文档](https://docs.openclaw.ai)
+- [OpenAI API Reference (通用接口规范)](https://platform.openai.com/docs/api-reference)
 - [SiliconFlow API Reference](https://docs.siliconflow.cn)
 - [Node.js Streams API](https://nodejs.org/api/stream.html)
 - [Docker Compose 资源控制规范](https://docs.docker.com/compose/compose-file/deploy/#resources)
