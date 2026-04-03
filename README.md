@@ -1,107 +1,118 @@
 # 🦞 OpenClaw Soft Engine (Expert Matrix v2.0)
 
+🌐 Language
+- English (current)
+- [简体中文](./README.zh-CN.md)
+
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue?logo=docker&logoColor=white)](https://www.docker.com)
 [![Windows 11](https://img.shields.io/badge/OS-Windows_11-0078D4?logo=windows&logoColor=white)](https://www.microsoft.com/windows/windows-11)
 [![Protocol](https://img.shields.io/badge/Protocol-DAG_Scheduling-orange)](workspace/AGENTS.md)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-本项目不仅仅是 OpenClaw 的配置模板，而是一套完整的 **Agent 软执行引擎 (Soft Execution Engine)** 实战方案。它通过强约束的 **DAG (有向无环图) 任务协议** 和 **多专家模型路由**，将 OpenClaw 从一个简单的聊天机器人，进化为具备物理隔离、并发调度和自我纠错能力的工业级 AI 助手。
+> **Note:** This project is a deployment template and enhancement layer for OpenClaw. It is not the official OpenClaw distribution.
 
-> 本教程记录了从 v1.0 “六模型矩阵” 进化至 v2.0 “软执行引擎” 的全过程，适合追求工程化落地的开发者参考。
+OpenClaw Soft Engine is a production-oriented execution layer that upgrades OpenClaw with structured routing, multi-expert model orchestration, and hardened guardrails. It combines a DAG-based task protocol with multi-expert model routing to improve execution control, route-level isolation, and concurrent task handling.
 
----
+This guide documents the full evolution from v1.0 "Six-Model Matrix" to v2.0 "Soft Execution Engine."
 
-## 示意图
+## Architecture Diagram
 
-![🦞 OpenClaw × openclaw-soft-engine](images/openclaw-soft-engine.svg)
+![Architecture Diagram](images/openclaw-soft-engine.svg)
 
-## 📑 目录
+## Who is this for?
 
-- [✨ 方案特性](#-方案特性)
-- [🖥️ 环境信息](#️-环境信息)
-- [📋 前置准备](#-前置准备必看)
-- [🚀 部署步骤](#-部署步骤核心-10-步)
-- [🎉 部署成功示例](#-部署成功示例)
-- [🛑 服务管理](#-服务管理与停止)
-- [❗ 常见异常排查指南](#-常见异常排查指南)
-- [🔒 安全注意事项](#-安全注意事项)
-- [📂 仓库文件说明](#-仓库文件说明)
-- [📚 参考资料](#-参考资料)
-- [👤 关于作者](#-关于作者)
+- Developers deploying OpenClaw in production or semi-production environments
+- Users who need multi-model routing and better execution stability
+- Engineers experimenting with agent orchestration and DAG-based workflows
 
----
+## Table of Contents
 
-## ✨ 方案特性
-
-相比 v1.0 版本，本方案通过架构重构具备以下工程优势：
-
-| 特性 | 说明 |
-| --- | --- |
-| **多路智能路由** | 根据 Payload 动态分发：常规对话/工具调度 → DeepSeek-V3.2，深度推理 → R1，视觉解析/代码生成 → Qwen 系列专家。 |
-| **API 密钥池化隔离** | Text / Tool / Vision / Reason / Code 使用独立 Key 进行计费与限流隔离，彻底解决高并发下的 429 报错瓶颈。 |
-| **跨模态数据清洗** | 底层拦截机制：自动剥离进入纯文本模型（如 R1）的图像载荷，防止上下文解析引发的 400 崩溃。 |
-| **系统级资源熔断** | 代理容器硬性锁死 512MB 内存防 OOM；外围抓取工具（web_fetch）加入 45 秒 AbortController 超时防挂起策略。 |
-| **全环境变量化** | 零硬编码，所有密钥通过 `.env` 安全注入。 |
+- [Key Features](#key-features)
+- [Tested Environment](#tested-environment)
+- [Prerequisites (Must Read)](#prerequisites-must-read)
+- [Deployment Steps (Core 10 Steps)](#deployment-steps-core-10-steps)
+- [Successful Deployment Examples](#successful-deployment-examples)
+- [Service Management & Stopping](#service-management--stopping)
+- [Troubleshooting Guide](#troubleshooting-guide)
+- [Security Considerations](#security-considerations)
+- [Repository Structure](#repository-structure)
+- [References](#references)
+- [About the Author](#about-the-author)
 
 ---
 
-## 🖥️ 环境信息
+## Key Features
 
-| 项目 | 详情 |
-| --- | --- |
-| **操作系统** | Windows 11 Home China 25H2 64位 |
-| **处理器** | AMD Ryzen 9 7945HX 十六核 |
-| **内存** | 16GB DDR5 5200MHz |
-| **显卡** | NVIDIA GeForce RTX 5070 Ti Laptop GPU (12GB) |
-| **Docker** | Docker Desktop（[www.docker.com](https://www.docker.com)） |
-| **AI 模型** | DeepSeek (V3.2/R1) / Qwen3 (VL/Coder) / BAAI (bge-m3/reranker) |
+Compared with v1.0, this version introduces a more structured and production-oriented architecture:
+
+| Feature | Description |
+| :--- | :--- |
+| **Multi-Expert Intelligent Dispatch** | Dynamically routes payloads by type: regular chat and tool calls go to DeepSeek-V3.2, deep reasoning to DeepSeek-R1, and vision or code workloads to Qwen-series expert models. |
+| **API Key Pool Isolation** | Uses separate API keys for Text, Tool, Vision, Reasoning, Code, and Embedding routes to prevent rate-limit contention across routes. If a key is compromised, it can be revoked independently without affecting other routes. |
+| **Cross-Modal Data Sanitization** | Automatically strips image data from requests sent to text-only models (such as DeepSeek-R1) to prevent context-parsing errors and upstream 400 failures. |
+| **Resource Guardrails** | The proxy container is hard-limited to 512MB of memory to prevent OOM crashes. External fetch tools enforce a strict 45-second timeout via `AbortController` to prevent process hangs and memory exhaustion. |
+| **Environment-Variable-Driven Configuration** | All sensitive values are injected through `.env`, keeping credentials out of source code entirely. |
 
 ---
 
-## 📋 前置准备（必看）
+## Tested Environment
 
-### 1. 开启 Windows 虚拟化与 WSL2
+| Item | Details |
+| :--- | :--- |
+| **OS** | Windows 11 Home China 25H2 (64-bit) |
+| **CPU** | AMD Ryzen 9 7945HX (16-core) |
+| **RAM** | 16GB DDR5 5200MHz |
+| **GPU** | NVIDIA GeForce RTX 5070 Ti Laptop GPU (12GB) |
+| **Docker** | Docker Desktop |
+| **Models** | DeepSeek (V3.2 / R1) · Qwen3 (VL / Coder) · BAAI (bge-m3 / reranker) |
 
-在 Windows 11 上运行 Docker 强依赖 WSL2：
+---
 
-1. 在 BIOS 中开启 CPU 虚拟化（任务管理器 → 性能 → CPU → 虚拟化：已启用）
-2. 以管理员身份运行 PowerShell，执行以下命令后**重启电脑**：
+## Prerequisites (Must Read)
+
+### 1. Enable Windows Virtualization and WSL2
+
+Docker on Windows 11 requires WSL2.
+
+1. Verify that CPU virtualization is enabled in BIOS: open Task Manager → Performance → CPU → confirm **Virtualization: Enabled**.
+2. Open PowerShell as Administrator and run the command below, then **restart your computer**:
 
 ```powershell
 wsl --install
 ```
 
-### 2. 安装 Git 和 Docker Desktop
+### 2. Install Git and Docker Desktop
 
-- Git：[git-scm.com](https://git-scm.com)
-- Docker Desktop：[docker.com](https://www.docker.com)，安装时勾选 "Use WSL 2 based engine"
+- **Git:** https://git-scm.com
+- **Docker Desktop:** https://www.docker.com — during installation, select **Use WSL 2 based engine**.
 
-### 3. 获取大模型 API Key
+### 3. Obtain API Keys
 
-前往任何兼容 OpenAI 规范的模型平台 (如 SiliconFlow, DeepSeek 官方等) 获取 API Key。
+Get OpenAI-compatible API keys from a supported provider such as [SiliconFlow](https://cloud.siliconflow.cn/account/ak), the official DeepSeek platform, or any other compatible platform.
 
-*(注：本教程以 [SiliconFlow 控制台](https://cloud.siliconflow.cn/account/ak) 为例)*
+For better isolation under concurrent load, create **separate keys** for each route and configure them individually in `.env`:
 
-为了实现多路并发隔离，建议创建 **多个独立的 Key**，分别配置于 `.env` 中：
-- 通用文本与工具调度 (Text & Tool)
-- 视觉与代码专家 (Vision & Code)
-- 深度推理专家 (Reason)
-- 向量嵌入记忆 (Embed)
+| Route | Purpose |
+| :--- | :--- |
+| Text & Tool | Central brain — general chat and tool dispatch |
+| Vision & Code | Qwen expert models |
+| Reasoning | DeepSeek-R1 deep reasoning |
+| Embedding | BGE-M3 vector memory |
 
-> 独立 Key 的好处：单一业务（如网络爬虫工具调用）触发频率限制时，不会导致主对话流瘫痪；且发生泄露时可单独吊销。
+> **Why separate keys?** If one route (e.g. a web-scraping tool call) triggers a rate limit, the other routes remain unaffected. Each key can also be revoked independently if leaked, without disrupting the rest of the system.
 
 ---
 
-## 🚀 部署步骤（核心 10 步）
+## Deployment Steps (Core 10 Steps)
 
-### 第一步：配置 Git 代理（国内网络可选）
+### Step 1: Configure a Git Proxy (Optional — for users behind restricted networks)
 
 ```powershell
 git config --global http.proxy http://127.0.0.1:10808
 git config --global https.proxy http://127.0.0.1:10808
 ```
 
-### 第二步：克隆 OpenClaw 仓库
+### Step 2: Clone the OpenClaw Repository
 
 ```powershell
 cd D:\AI
@@ -109,43 +120,41 @@ git clone --depth 1 https://github.com/openclaw/openclaw
 cd openclaw
 ```
 
-### 第三步：将本仓库文件同步到 openclaw 目录
+### Step 3: Copy This Repository's Files into the OpenClaw Directory
 
 ```powershell
-# 克隆本仓库部署模板
+# Clone the Soft Engine template
 git clone https://github.com/Syysean/openclaw-soft-engine D:\AI\openclaw-deploy
 
-# 覆盖核心网关、编排文件与环境变量模板
-Copy-Item D:\AI\openclaw-deploy\proxy.js D:\AI\openclaw\proxy.js -Force
-Copy-Item D:\AI\openclaw-deploy\docker-compose.yml D:\AI\openclaw\docker-compose.yml -Force
-Copy-Item D:\AI\openclaw-deploy\.env.example D:\AI\openclaw\.env.example -Force
+# Overlay core gateway, orchestration, and environment files
+Copy-Item D:\AI\openclaw-deploy\proxy.js .\proxy.js -Force
+Copy-Item D:\AI\openclaw-deploy\docker-compose.yml .\docker-compose.yml -Force
+Copy-Item D:\AI\openclaw-deploy\.env.example .\.env.example -Force
 
-# 部署沙盒安全配置与软执行引擎核心协议（含 v2.0 加固版工具库）
-Copy-Item D:\AI\openclaw-deploy\config\openclaw.example.json D:\AI\openclaw\config\ -Force
-Copy-Item D:\AI\openclaw-deploy\workspace\* D:\AI\openclaw\workspace\ -Recurse -Force
+# Deploy sandbox configuration and the v2.0 hardened toolchain
+Copy-Item D:\AI\openclaw-deploy\config\openclaw.example.json .\config\ -Force
+Copy-Item D:\AI\openclaw-deploy\workspace\* .\workspace\ -Recurse -Force
 ```
 
-### 第四步：配置环境变量
+### Step 4: Configure Environment Variables
 
-复制模板并填写真实值：
+Copy the template files and fill in the real values:
 
 ```powershell
-# 复制环境变量与网关配置模板
 Copy-Item .env.example .env
 Copy-Item config\openclaw.example.json config\openclaw.json
 
-# 填写真实值
 notepad .env
 ```
 
-需要填写的关键变量：
+Required variables:
 
 ```bash
-# Gateway 认证 token（用下面命令生成）
+# Generate a secure gateway token with:
 # openssl rand -hex 24
-OPENCLAW_GATEWAY_TOKEN=你生成的随机token
+OPENCLAW_GATEWAY_TOKEN=your_generated_token
 
-# MATRIX 多路独立鉴权 Key
+# Multi-route API key pool
 MATRIX_TEXT_API_KEY=sk-...
 MATRIX_TOOL_API_KEY=sk-...
 MATRIX_VISION_API_KEY=sk-...
@@ -153,237 +162,298 @@ MATRIX_REASONING_API_KEY=sk-...
 MATRIX_CODE_API_KEY=sk-...
 MATRIX_EMBED_API_KEY=sk-...
 
-# 网页抓取工具可选配置
+# Optional — required for the web_fetch tool
 JINA_API_KEY=jina_...
 ```
 
-> 🔴 **注意**：变量名和等号前后**绝对不能有空格**，否则 Key 读取失败。
+> **Important:** Do not add spaces before or after `=` in `.env`. Extra whitespace will cause the key to be read as an empty string.
 
-### 第五步：构建 Docker 镜像
+### Step 5: Build the Docker Image
 
 ```powershell
 docker build -t openclaw:local .
 ```
 
-> ⏳ 若遇到 `unexpected EOF` 是网络中断，重跑即可。
+> If you see `unexpected EOF` during the build, this is a transient network interruption. Simply re-run the command.
 
-### 第六步：启动所有容器
+### Step 6: Start All Containers
 
 ```powershell
 docker compose up -d
 docker compose ps
 ```
 
-看到所有服务 `STATUS: Up` 说明启动成功。
-
-验证 proxy 智能路由是否正常挂载：
+All services should show `STATUS: Up`. Verify that the smart routing proxy has initialized correctly:
 
 ```powershell
 docker compose logs -f matrix-proxy
 ```
 
-应看到类似如下系统初始化日志：
+You should see initialization output similar to the following:
+
 ```text
 [proxy] ══════════════════════════════════════
 [proxy] Smart routing proxy on :13001 (Coordinator Phase 1)
 [proxy] ──────────────────────────────────────
-[proxy]  中央大脑 (text/tool) -> Pro/deepseek-ai/DeepSeek-V3.2
-[proxy]  视觉专家 (vision)   -> Qwen/Qwen3-VL-32B-Instruct
-[proxy]  推理专家 (reason)   -> Pro/deepseek-ai/DeepSeek-R1
-[proxy]  代码专家 (code)     -> Qwen/Qwen3-Coder-30B-A3B-Instruct
+[proxy]  Central brain (text/tool) -> Pro/deepseek-ai/DeepSeek-V3.2
+[proxy]  Vision expert  (vision)   -> Qwen/Qwen3-VL-32B-Instruct
+[proxy]  Reasoning expert (reason) -> Pro/deepseek-ai/DeepSeek-R1
+[proxy]  Code expert    (code)     -> Qwen/Qwen3-Coder-30B-A3B-Instruct
 [proxy] ──────────────────────────────────────
 ```
 
-### 第七步：运行配置向导
+### Step 7: Run the Configuration Wizard
 
 ```powershell
 docker compose run --rm openclaw-cli configure
 ```
 
-按向导依次选择：
+Follow the prompts and select the following values:
 
-| 选项 | 选择 |
-| --- | --- |
-| Gateway 位置 | Local (this machine) |
-| 配置项目 | Gateway |
+| Option | Value |
+| :--- | :--- |
+| Gateway location | Local (this machine) |
+| Configuration target | Gateway |
 | Gateway port | 18789 |
 | Gateway bind mode | **LAN (All interfaces)** |
 | Gateway auth | Token |
 | Tailscale exposure | Off |
-| Gateway token | 填入 .env 里的 OPENCLAW_GATEWAY_TOKEN |
+| Gateway token | The value of `OPENCLAW_GATEWAY_TOKEN` from your `.env` |
 
-### 第八步：健康检查
+### Step 8: Run a Health Check
 
 ```powershell
 docker compose run --rm openclaw-cli health
 ```
 
-看到 `Gateway: reachable` 说明配置成功。
+A successful setup will report `Gateway: reachable`.
 
-### 第九步：测试终端对话
+### Step 9: Test the Terminal Agent
 
 ```powershell
-docker compose run --rm openclaw-cli agent --session-id test01 -m "你好，请调用代码专家写一段简单的C++代码"
+docker compose run --rm openclaw-cli agent --session-id test01 -m "Hello, please ask the code expert to write a simple C++ snippet"
 ```
 
-### 第十步：访问网页界面并批准设备
+### Step 10: Access the Web UI and Approve the Device
 
-1. 浏览器打开 `http://localhost:18789`
-2. 填入 Gateway Token，点击连接
-3. 首次连接需批准设备：
+1. Open `http://localhost:18789` in your browser.
+2. Enter the Gateway Token and connect.
+3. If this is the first connection from this browser, approve the device pairing request:
 
 ```powershell
-# 查看待批准设备
+# List pending device requests
 docker compose run --rm openclaw-cli devices list
 
-# 批准设备（替换为实际 ID）
+# Approve by request ID
 docker compose run --rm openclaw-cli devices approve <requestId>
 ```
 
 ---
 
-## 🎉 部署成功示例
+## Successful Deployment Examples
 
-### 终端对话
-![终端对话截图](images/screenshot-cli.png)
+**Terminal Chat**
 
-### 网页界面
-![网页界面截图](images/screenshot-webui.png)
+![Terminal Chat](images/screenshot-cli.png)
+
+**Web Interface**
+
+![Web Interface](images/screenshot-webui.png)
 
 ---
 
-## 🛑 服务管理与停止
+## Service Management & Stopping
 
 ```powershell
-# 停止并保留数据
+# Stop containers but preserve state
 docker compose stop
 
-# 停止并移除容器
+# Stop and remove containers
 docker compose down
 
-# 查看实时日志
+# Stream all logs in real time
 docker compose logs -f
 
-# 只看 proxy 路由日志
+# Stream only the proxy routing logs
 docker compose logs -f matrix-proxy
 ```
 
 ---
 
-## ❗ 常见异常排查指南
+## Troubleshooting Guide
 
-本系统涉及多容器编排与云端 API 通信，发生异常时请按以下分类进行排查：
+<details>
+<summary><b>Click to expand the full troubleshooting reference</b></summary>
 
-<details markdown="1">
-<summary><b>🔥 点击展开查看完整排障档案</b></summary>
+### Container and Image Issues
 
-#### [容器与镜像级异常]
 **1. `pull access denied for openclaw`**
-- **现象**：Docker 引擎尝试从远端拉取镜像失败。
-- **排障**：官方核心引擎尚未提供公共构建，必须在本地执行 `docker build -t openclaw:local .` 完成本地镜像编译。
 
-**2. 容器频繁退出 `OOMKilled` 或 `Exit Code 137`**
-- **现象**：网关容器突然死亡并重启。
-- **排障**：系统成功防御了内存溢出。通常是因为发送了未经压缩的超大载荷（如>10MB图像）击穿了 `512MB` 的内存物理限制。建议使用附带的 `ask_vision.cjs` 进行前端拦截。
+**Symptom:** Docker attempts to pull the image from a remote registry and fails.
 
-#### [网络与网关路由异常]
+**Fix:** The official OpenClaw engine image is not publicly published. Build it locally:
+```powershell
+docker build -t openclaw:local .
+```
+
+---
+
+**2. Container exits with `OOMKilled` or `Exit Code 137`**
+
+**Symptom:** The gateway container crashes and restarts repeatedly.
+
+**Fix:** A payload exceeded the 512MB memory hard limit. This is typically caused by sending a large uncompressed image (>10MB) directly. Use the provided `ask_vision.cjs` tool to intercept and size-check image payloads before they reach the gateway.
+
+---
+
+### Network and Gateway Issues
+
 **3. `[proxy] request error: client disconnected`**
-- **现象**：网关或云端主动释放了连接。
-- **排障**：若偶发，此为 Node.js 正常的长连接 (Keep-Alive) 生命周期结束；若大面积报错且伴随 502，说明你的 API Key 触发了上游服务商的速率限制 (Rate Limit)，建议增加 Key 池数量。
+
+**Symptom:** The gateway or upstream provider drops the connection.
+
+**Fix:** Occasional occurrences are normal — this is standard Node.js Keep-Alive lifecycle behavior. If this error appears frequently alongside 502 responses, it indicates that an upstream API key has hit its rate limit. Increase the size of your key pool.
+
+---
 
 **4. `LLM request timed out`**
-- **现象**：代理网关上游响应超时。
-- **排障**：通过 `docker compose logs -f matrix-proxy` 查看路由网关日志。通常是上游大模型服务器拥堵，或本地网关容器未正常启动。
+
+**Symptom:** The proxy gateway receives no response from the upstream model.
+
+**Fix:** Check `docker compose logs -f matrix-proxy`. This is usually caused by upstream server congestion or the proxy container being in an unhealthy state. Restart the proxy container if needed.
+
+---
 
 **5. `ERR_EMPTY_RESPONSE` / `non-loopback Control UI requires...`**
-- **现象**：UI 面板拒绝跨域或网关回源失败。
-- **排障**：网关绑定为局域网 (LAN) 时，必须在 `openclaw.json` 中配置 `dangerouslyAllowHostHeaderOriginFallback: true` 以允许跨域源站校验。
 
-#### [认证与权限异常]
-**6. `MATRIX_TEXT_API_KEY is not set` / 启动报错**
-- **现象**：系统检测到认证凭据未注入。
-- **排障**：检查 `.env` 文件。确保多个 `MATRIX_*` 变量名拼写正确，且**等号前后绝对不能有空格**（这会导致环境变量解析异常）。
+**Symptom:** The Control UI refuses the cross-origin request or the gateway fails to resolve its own origin.
+
+**Fix:** When the gateway is bound to LAN mode, add `"dangerouslyAllowHostHeaderOriginFallback": true` to `openclaw.json` to allow cross-origin header validation.
+
+---
+
+### Authentication Issues
+
+**6. `MATRIX_TEXT_API_KEY is not set`**
+
+**Symptom:** The system reports that one or more API keys are missing on startup.
+
+**Fix:** Open `.env` and check for typos in the `MATRIX_*` variable names. Ensure there are **no spaces before or after the `=` sign** — a space causes the value to be parsed as an empty string.
+
+---
 
 **7. `Verification failed: status 402`**
-- **现象**：上游模型路由寻址成功，但拒绝服务。
-- **排障**：上游云服务商配额耗尽，请前往控制台补充算力余额。
+
+**Symptom:** The upstream model route is reachable but refuses to serve the request.
+
+**Fix:** The API quota for this key has been exhausted. Top up your account balance in the upstream provider's console.
+
+---
 
 **8. `gateway token mismatch` / `unauthorized: gateway token missing`**
-- **现象**：鉴权握手失败。
-- **排障**：网页端或 `.env` 中输入的 Token 与沙盒配置库 (`openclaw.json`) 中记录的不一致。请重新运行 `configure` 向导覆写配置。
+
+**Symptom:** The authentication handshake fails when connecting from the browser or CLI.
+
+**Fix:** The token in your browser or `.env` does not match the value stored in `openclaw.json`. Re-run the configure wizard to overwrite the stored configuration with the current token.
+
+---
 
 **9. `pairing required`**
-- **现象**：边缘设备未授权接入。
-- **排障**：新的终端（如浏览器）首次连接需执行设备签权：使用 `devices list` 查看挂起请求，并使用 `devices approve <id>` 批准。
 
-#### [文件与配置异常]
-**10. `Missing config`（Gateway 一直重启）**
-- **现象**：配置文件初始化异常。
-- **排障**：本仓库的 `docker-compose.yml` 已通过附加 `--allow-unconfigured` 参数解决此问题，请确保使用的是最新编排文件。
+**Symptom:** A new terminal or browser session is blocked from connecting.
 
-**11. `ERR_CONNECTION_REFUSED` (Gateway 容器彻底崩溃)**
-- **现象**：核心服务拒绝连接。
-- **排障**：极大概率是手写 `openclaw.json` 时破坏了严格的 JSON 语法规范（如漏掉逗号）。使用 JSON 校验工具修复后重启容器。
+**Fix:** New clients must be approved before they can communicate with the gateway. Use `devices list` to see pending requests, then `devices approve <id>` to authorize the connection.
+
+---
+
+### Configuration Issues
+
+**10. `Missing config` (Gateway restarts in a loop)**
+
+**Symptom:** The gateway container starts and immediately exits, then restarts.
+
+**Fix:** Make sure you are using the `docker-compose.yml` from this repository. It includes the required `--allow-unconfigured` startup flag that prevents this crash loop.
+
+---
+
+**11. `ERR_CONNECTION_REFUSED` (Gateway container fails to start)**
+
+**Symptom:** The core service refuses all connections.
+
+**Fix:** This is almost always caused by a JSON syntax error in `openclaw.json` — a missing comma or trailing bracket. Validate the file with a JSON linter, fix the error, and restart the container.
+
+---
 
 **12. `404 status code (no body)`**
-- **现象**：Agent 路由寻址失败。
-- **排障**：确认 `openclaw.json` 中的 `model` 字段值指向了正确的供应商接口(确保模型名与你填写的供应商对应)。
 
-**13. `MATRIX_TEXT_API_KEY is not set` (单 Key 报错)**
-- **现象**：路由网关版本陈旧。
-- **排障**：你仍在运行旧版的“单 Key 路由”脚本。请用本仓库最新的 `proxy.js`（多路独立路由版）覆盖，并重启 proxy 容器。
+**Symptom:** The agent cannot route to the target model.
 
-**14. 僵尸工具进程永久挂起**
-- **现象**：调用 `web_fetch` 等外部工具时系统卡死。
-- **排障**：检查是否未覆盖使用 `workspace/tools/` 目录下的安全脚本。加固版脚本已内置 45 秒强制超时熔断锁。
+**Fix:** Verify that the `model` field in `openclaw.json` matches the exact model identifier used by your API provider. Model names differ between providers.
 
+---
+
+**13. `MATRIX_TEXT_API_KEY is not set` (single-key error)**
+
+**Symptom:** The proxy starts without error but immediately reports a missing key.
+
+**Fix:** This usually means the single-key proxy script from v1.0 is still active. Replace it with the latest multi-route `proxy.js` from this repository and restart the proxy container.
+
+---
+
+**14. Tool processes hang indefinitely**
+
+**Symptom:** A call to `web_fetch` or another external tool causes the agent to stall with no response.
+
+**Fix:** Confirm that the hardened scripts from `workspace/tools/` have been copied correctly. The v2.0 toolchain includes a mandatory 45-second `AbortController` timeout guard. The v1.0 scripts do not.
 </details>
 <br>
 
-## 🔒 安全注意事项
+---
 
-1. **绝对不要**将 `.env` 上传至 GitHub（`.gitignore` 已过滤该文件）。
-2. 本方案通过 `config/openclaw.json` 强制开启了 `sandbox: non-main`，限制非主私聊环境下的系统级指令执行权限。
-3. Gateway Token 泄露后请重新生成，更新 `.env` 后重启网关服务：
+## Security Considerations
+
+1. **Never commit `.env` to GitHub.** `.gitignore` is already configured to exclude it, but always verify before pushing.
+2. `config/openclaw.json` is preconfigured with `sandbox: non-main`, which restricts system-level command execution outside of the primary private chat context.
+3. If the Gateway Token is exposed, regenerate it immediately, update `.env`, and restart the gateway:
    ```powershell
    docker compose restart openclaw-gateway
    ```
 
 ---
 
-## 📂 仓库文件说明
+## Repository Structure
 
 ```text
-├── proxy.js                   # 核心路由引擎：实现多模态分发、流截断修复与跨模态数据清洗
-├── docker-compose.yml         # 编排文件：定义网络、健康检查与容器资源硬限制
-├── docker-compose.override.example.yml # 配置模板：用于挂载本地物理项目路径
-├── .env.example               # 环境变量模板：六路密钥隔离池配置
+├── proxy.js                            # Core routing engine: multimodal dispatch, stream repair, and cross-modal sanitization
+├── docker-compose.yml                  # Orchestration: network topology, health checks, and container resource limits
+├── docker-compose.override.example.yml # Override template for mounting local project paths into the workspace
+├── .env.example                        # Environment template: six-route isolated key pool configuration
 ├── config/
-│   └── openclaw.example.json  # 全局安全策略：预设沙盒等级与鉴权模式
-└── workspace/                 # 软执行引擎核心工作区
-    ├── AGENTS.md              # 核心协议：DAG 任务调度、任务依赖与反虚构准则
-    ├── TOOLS.md               # 基础设施：定义物理边界、模型路由表与目录结构
-    └── tools/                 # 加固版工具链
-        ├── ask_expert.cjs     # 专家调度：支持推理/代码模式切换与 10min 超时保护
-        ├── ask_vision.cjs     # 视觉保护：支持 media:// 契约与 8MB OOM 拦截
-        ├── web_fetch.cjs      # 智能爬虫：Jina/Firecrawl 双引擎自动切换与 45s 熔断
-        └── deep_search.cjs    # 深度搜索：带权重的本地知识库检索算法
+│   └── openclaw.example.json           # Global security policy: sandbox level and authentication mode
+└── workspace/                          # Soft Engine core workspace
+    ├── AGENTS.md                       # Core protocol: DAG task scheduling, dependency resolution, and anti-hallucination rules
+    ├── TOOLS.md                        # Infrastructure layer: routing table, physical boundaries, and directory conventions
+    └── tools/                          # Hardened toolchain
+        ├── ask_expert.cjs              # Expert dispatch: reasoning/code mode switching with 10-minute timeout protection
+        ├── ask_vision.cjs              # Vision guardrail: media:// contract handling and 8MB OOM interception
+        ├── web_fetch.cjs               # Web fetch helper: Jina/Firecrawl dual-engine fallback with 45-second circuit breaker
+        └── deep_search.cjs             # Deep search helper: weighted local knowledge base retrieval
 ```
 
 ---
 
-## 📚 参考资料
+## References
 
-- [OpenClaw 官方文档](https://docs.openclaw.ai)
-- [OpenAI API Reference (通用接口规范)](https://platform.openai.com/docs/api-reference)
-- [SiliconFlow API Reference](https://docs.siliconflow.cn)
-- [Node.js Streams API](https://nodejs.org/api/stream.html)
-- [Docker Compose 资源控制规范](https://docs.docker.com/compose/compose-file/deploy/#resources)
+- OpenClaw Official Docs — https://docs.openclaw.ai
+- OpenAI API Reference — https://platform.openai.com/docs/api-reference
+- SiliconFlow API Reference — https://docs.siliconflow.cn
+- Node.js Streams API — https://nodejs.org/api/stream.html
+- Docker Compose Resource Controls — https://docs.docker.com/compose/compose-file/deploy/#resources
 
 ---
 
-## 👤 关于作者
+## About the Author
 
-**湖南工商大学 机器人工程专业 本科在读**
+Undergraduate student majoring in Robotics Engineering at Hunan University of Technology and Business.
 
-欢迎提交 [Issue](https://github.com/Syysean/openclaw-soft-engine/issues) 或 PR 进行技术交流探讨。
+Feel free to open an [Issue](https://github.com/Syysean/openclaw-soft-engine/issues) or submit a PR for technical discussion.
